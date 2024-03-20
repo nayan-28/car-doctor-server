@@ -28,6 +28,7 @@ async function run() {
 
 
         const serviceCollection = client.db('carDoctor').collection('services');
+        const bookingCollection = client.db('carDoctor').collection('bookings');
 
 
         app.get('/services', async(req, res) => {
@@ -44,6 +45,12 @@ async function run() {
             };
 
             const result = await serviceCollection.findOne(query, options);
+            res.send(result);
+        })
+
+        app.post('/bookings', async(req, res) => {
+            const booking = req.body;
+            const result = await bookingCollection.insertOne(booking);
             res.send(result);
         })
 
