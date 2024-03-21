@@ -26,6 +26,30 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+//middlewares
+
+const logger = async(req, res, next) => {
+    console.log('Called', req.host, req.originalUrl)
+    next();
+}
+
+const verifyToken = async(req, res, next) => {
+    const token = req.cookies.token;
+    console.log('Middlewares', token);
+    if (!token) {
+        return res.status(401).send({ message: 'Forbidden' })
+    }
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRETE, (err, decoded) => {
+        if (err) {
+            console.log(err);
+            return res.status(401).send({ message: 'Unauthorized' });
+        }
+        console.log('Value of the token:', decoded);
+        req.user = decoded;
+        next();
+    })
+
+}
 
 async function run() {
     try {
@@ -37,7 +61,7 @@ async function run() {
         const bookingCollection = client.db('carDoctor').collection('bookings');
 
 
-        app.post('/jwt', async(req, res) => {
+        app.post('/jwt', logger, async(req, res) => {
             const user = req.body;
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRETE, { expiresIn: '1h' })
             res.cookie('token', token, {
@@ -48,7 +72,7 @@ async function run() {
         })
 
 
-        app.get('/services', async(req, res) => {
+        app.get('/services', logger, async(req, res) => {
             const cursor = serviceCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -71,7 +95,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/bookings', async(req, res) => {
+        app.get('/bookings', logger, verifyToken, async(req, res) => {
             let query = {};
             if (req.query && req.query.email) {
                 query = { email: req.query.email };
